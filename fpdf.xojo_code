@@ -952,118 +952,136 @@ Protected Class fpdf
 
 	#tag Method, Flags = &h0
 		Sub ImagePngWithAlpha(file as string, x as double, y as double, optional w as double = 0, optional h as double = 0, optional type as string = "", optional link as string = "")
-		  Dim tmp_alpha As FolderItem
-		  Dim tmp_alpha2 As FolderItem
-		  Dim tmp_plain As FolderItem
-		  Dim strKey As String
-		  '$tmp_alpha = tempnam('.', 'mska');
-		  Dim iCountFiles As Integer
-		  if tmpfiles=nil then
-		    tmpfiles=New Dictionary
-		  end if
-		  iCountFiles=tmpfiles.Count
-		  strKey="mska" + Format(iCountFiles,"0000") + ".png"
-		  tmp_alpha=GetFolderItem(strKey)
-		  if tmp_alpha=nil then
-		    exit sub
-		  end if
-		  strKey="mska" + Format(iCountFiles,"0000") + "b.png"
-		  tmp_alpha2=GetFolderItem(strKey)
-		  if tmp_alpha2=nil then
-		    exit sub
-		  end if
-		  tmpfiles.value(tmp_alpha.ShellPath)=iCountFiles
-		  'tmpfiles.Append tmp_alpha.Name
-		  '$this->tmpFiles[] = $tmp_alpha;
-		  '$tmp_plain = tempnam('.', 'mskp');
-		  iCountFiles=tmpfiles.Count
-		  strKey="mskp" + Format(iCountFiles,"0000") + ".png"
-		  tmp_plain=GetFolderItem(strKey)
-		  if tmp_plain= nil then
-		    Exit Sub
-		  end if
-		  tmpfiles.value(tmp_plain.ShellPath)=iCountFiles
-		  'tmpfiles.Append tmp_plain.Name
-		  '$this->tmpFiles[] = $tmp_plain;
-		  
-		  'list($wpx, $hpx) = getimagesize($file);
-		  'Dim a As Collection
-		  'Dim wpx As Integer
-		  'Dim hpx As Integer
-		  'a=GetImageSize(file)
-		  'wpx=a.Item("width")
-		  'hpx=a.Item("height")
-		  
-		  '$img = imagecreatefrompng($file);
-		  Dim img As Picture
-		  Dim imgFile As FolderItem
-		  imgFile=GetFolderItem(file,FolderItem.PathTypeShell)
-		  if imgFile=nil then
-		    me.Error("Unexpected error opening alpha png") 
-		    exit sub
-		  end if
-		  img=Picture.Open(imgFile)
-		  '$alpha_img = imagecreate( $wpx, $hpx );
-		  
-		  // generate gray scale pallete
-		  'for($c=0;$c<256;$c++)
-		  'ImageColorAllocate($alpha_img, $c, $c, $c);
-		  '
-		  '// extract alpha channel
-		  '$xpx=0;
-		  'while ($xpx<$wpx){
-		  '$ypx = 0;
-		  'while ($ypx<$hpx){
-		  '$color_index = imagecolorat($img, $xpx, $ypx);
-		  '$col = imagecolorsforindex($img, $color_index);
-		  'imagesetpixel($alpha_img, $xpx, $ypx, $this->_gamma( (127-$col['alpha'])*255/127) );
-		  '++$ypx;
-		  '}
-		  '++$xpx;
-		  '}
-		  Dim alpha_img As Picture
-		  alpha_img=img.CopyMask
-		  alpha_img=InvertPicture(alpha_img)
-		  'alpha_img=GreyScale(alpha_img)
-		  'imagepng($alpha_img, $tmp_alpha);
-		  'alpha_img.Save(tmp_alpha, Picture.SaveAsPNG)
-		  dim p As new PNGWriterMBS
-		  if p.OpenWriteDestination(tmp_alpha) then
-		    if p.SetGrayPicture(alpha_img) then // set picture to write
-		      if p.SetHeader(false, -1) then // setup file header
-		        if p.SetGamma(0) then // and default gamma
-		          if p.WriteInfo then // write file header
-		            if p.WriteRows then // write pixels
-		              if p.WriteEnd then // and write file end
-		                p = nil // cleanup
-		                'f.Launch
+		  #If UseMBS Then
+		    Dim tmp_alpha As FolderItem
+		    Dim tmp_alpha2 As FolderItem
+		    Dim tmp_plain As FolderItem
+		    Dim strKey As String
+		    '$tmp_alpha = tempnam('.', 'mska');
+		    Dim iCountFiles As Integer
+		    if tmpfiles=nil then
+		      tmpfiles=New Dictionary
+		    end if
+		    iCountFiles=tmpfiles.Count
+		    strKey="mska" + Format(iCountFiles,"0000") + ".png"
+		    tmp_alpha=GetFolderItem(strKey)
+		    if tmp_alpha=nil then
+		      exit sub
+		    end if
+		    strKey="mska" + Format(iCountFiles,"0000") + "b.png"
+		    tmp_alpha2=GetFolderItem(strKey)
+		    if tmp_alpha2=nil then
+		      exit sub
+		    end if
+		    tmpfiles.value(tmp_alpha.ShellPath)=iCountFiles
+		    'tmpfiles.Append tmp_alpha.Name
+		    '$this->tmpFiles[] = $tmp_alpha;
+		    '$tmp_plain = tempnam('.', 'mskp');
+		    iCountFiles=tmpfiles.Count
+		    strKey="mskp" + Format(iCountFiles,"0000") + ".png"
+		    tmp_plain=GetFolderItem(strKey)
+		    if tmp_plain= nil then
+		      Exit Sub
+		    end if
+		    tmpfiles.value(tmp_plain.ShellPath)=iCountFiles
+		    'tmpfiles.Append tmp_plain.Name
+		    '$this->tmpFiles[] = $tmp_plain;
+		    
+		    'list($wpx, $hpx) = getimagesize($file);
+		    'Dim a As Collection
+		    'Dim wpx As Integer
+		    'Dim hpx As Integer
+		    'a=GetImageSize(file)
+		    'wpx=a.Item("width")
+		    'hpx=a.Item("height")
+		    
+		    '$img = imagecreatefrompng($file);
+		    Dim img As Picture
+		    Dim imgFile As FolderItem
+		    imgFile=GetFolderItem(file,FolderItem.PathTypeShell)
+		    if imgFile=nil then
+		      me.Error("Unexpected error opening alpha png") 
+		      exit sub
+		    end if
+		    img=Picture.Open(imgFile)
+		    '$alpha_img = imagecreate( $wpx, $hpx );
+		    
+		    // generate gray scale pallete
+		    'for($c=0;$c<256;$c++)
+		    'ImageColorAllocate($alpha_img, $c, $c, $c);
+		    '
+		    '// extract alpha channel
+		    '$xpx=0;
+		    'while ($xpx<$wpx){
+		    '$ypx = 0;
+		    'while ($ypx<$hpx){
+		    '$color_index = imagecolorat($img, $xpx, $ypx);
+		    '$col = imagecolorsforindex($img, $color_index);
+		    'imagesetpixel($alpha_img, $xpx, $ypx, $this->_gamma( (127-$col['alpha'])*255/127) );
+		    '++$ypx;
+		    '}
+		    '++$xpx;
+		    '}
+		    Dim alpha_img As Picture
+		    alpha_img=img.CopyMask
+		    alpha_img=InvertPicture(alpha_img)
+		    'alpha_img=GreyScale(alpha_img)
+		    'imagepng($alpha_img, $tmp_alpha);
+		    'alpha_img.Save(tmp_alpha, Picture.SaveAsPNG)
+		    dim p As new PNGWriterMBS
+		    if p.OpenWriteDestination(tmp_alpha) then
+		      if p.SetGrayPicture(alpha_img) then // set picture to write
+		        if p.SetHeader(false, -1) then // setup file header
+		          if p.SetGamma(0) then // and default gamma
+		            if p.WriteInfo then // write file header
+		              if p.WriteRows then // write pixels
+		                if p.WriteEnd then // and write file end
+		                  p = nil // cleanup
+		                  'f.Launch
+		                end if
 		              end if
 		            end if
 		          end if
 		        end if
 		      end if
 		    end if
-		  end if
-		  'imagedestroy($alpha_img);
-		  alpha_img=nil
-		  
-		  // extract image without alpha channel
-		  '$plain_img = imagecreatetruecolor ( $wpx, $hpx );
-		  Dim plain_img As New Picture(img.Width, img.Height,32)
-		  'imagecopy($plain_img, $img, 0, 0, 0, 0, $wpx, $hpx );
-		  plain_img.Graphics.DrawPicture(img,0,0)
-		  'imagepng($plain_img, $tmp_plain);
-		  plain_img.Save(tmp_plain, Picture.SaveAsPNG)
-		  'imagedestroy($plain_img);
-		  plain_img=nil
-		  
-		  //first embed mask image (w, h, x, will be ignored)
-		  '$maskImg = $this->Image($tmp_alpha, 0,0,0,0, 'PNG', '', true); 
-		  Image(tmp_alpha.ShellPath, 0, 0, 0, 0, "PNG", "", True)
-		  //embed image, masked with previously embedded mask
-		  '$this->Image($tmp_plain,$x,$y,$w,$h,'PNG',$link, false, $maskImg);
-		  Image(tmp_plain.ShellPath, x, y, w, h, "PNG", link, False, me.Images.Count)
-		  
+		    'imagedestroy($alpha_img);
+		    alpha_img=nil
+		    
+		    // extract image without alpha channel
+		    '$plain_img = imagecreatetruecolor ( $wpx, $hpx );
+		    Dim plain_img As New Picture(img.Width, img.Height,32)
+		    'imagecopy($plain_img, $img, 0, 0, 0, 0, $wpx, $hpx );
+		    plain_img.Graphics.DrawPicture(img,0,0)
+		    'imagepng($plain_img, $tmp_plain);
+		    'plain_img.Save(tmp_plain, Picture.SaveAsPNG)
+		    p = new PNGWriterMBS
+		    if p.OpenWriteDestination(tmp_plain) then
+		      if p.SetRGBPicture(plain_img) then // set picture to write
+		        if p.SetHeader(false, -1) then // setup file header
+		          if p.SetGamma(0) then // and default gamma
+		            if p.WriteInfo then // write file header
+		              if p.WriteRows then // write pixels
+		                if p.WriteEnd then // and write file end
+		                  p = nil // cleanup
+		                  'f.Launch
+		                end if
+		              end if
+		            end if
+		          end if
+		        end if
+		      end if
+		    end if
+		    'imagedestroy($plain_img);
+		    plain_img=nil
+		    
+		    //first embed mask image (w, h, x, will be ignored)
+		    '$maskImg = $this->Image($tmp_alpha, 0,0,0,0, 'PNG', '', true); 
+		    Image(tmp_alpha.ShellPath, 0, 0, 0, 0, "PNG", "", True)
+		    //embed image, masked with previously embedded mask
+		    '$this->Image($tmp_plain,$x,$y,$w,$h,'PNG',$link, false, $maskImg);
+		    Image(tmp_plain.ShellPath, x, y, w, h, "PNG", link, False, me.Images.Count)
+		  #Endif
 		End Sub
 	#tag EndMethod
 

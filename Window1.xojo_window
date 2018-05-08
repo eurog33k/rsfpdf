@@ -739,17 +739,30 @@ End
 		  
 		  // A) provide image + separate 8-bit mask (best quality!)
 		  
+		  Dim fDebugFolder As FolderItem
+		  #If TargetWindows Then
+		    fDebugFolder=GetFolderItem("").Parent
+		  #Else
+		    fDebugFolder=GetFolderItem("")
+		  #Endif
+		  
 		  // first embed mask image (w, h, x and y will be ignored, the image will be scaled to the target image's size)
-		  iMaskImg=pdf.Image(GetFolderItem("").Child("demoinfo").Child("mask.png").ShellPath, 0,0,0,0, "", "", True)
+		  
+		  iMaskImg=pdf.Image(fDebugFolder.Child("demoinfo").Child("mask.png").ShellPath, 0,0,0,0, "", "", True)
+		  
 		  // embed image, masked with previously embedded mask
-		  pdf.Image(GetFolderItem("").Child("demoinfo").Child("image.png").ShellPath,55,10,100,0,"","", false, iMaskImg)
 		  
-		  // B) use alpha channel from PNG (alpha channel converted to 7-bit by GD, lower quality)
-		  pdf.ImagePngWithAlpha(GetFolderItem("").Child("demoinfo").Child("image_with_alpha.png").ShellPath,55,100,100)
+		  pdf.Image(fDebugFolder.Child("demoinfo").Child("image.png").ShellPath,55,10,100,0,"","", false, iMaskImg)
 		  
-		  // C) same as B), but using Image() method that recognizes the alpha channel
-		  pdf.Image(GetFolderItem("").Child("demoinfo").Child("image_with_alpha.png").ShellPath,55,190,100)
-		  
+		  #If UseMBS Then
+		    // B) use alpha channel from PNG (alpha channel converted to 7-bit by GD, lower quality)
+		    
+		    pdf.ImagePngWithAlpha(fDebugFolder.Child("demoinfo").Child("image_with_alpha.png").ShellPath,55,100,100)
+		    
+		    // C) same as B), but using Image() method that recognizes the alpha channel
+		    pdf.Image(fDebugFolder.Child("demoinfo").Child("image_with_alpha.png").ShellPath,55,190,100)
+		    
+		  #endif
 		  pdf.Output(me.Name + ".pdf")
 		  
 		  me.Enabled = true
@@ -760,25 +773,36 @@ End
 #tag Events Example7
 	#tag Event
 		Sub Action()
-		  dim pdf as fpdf
-		  dim link as string
-		  
-		  me.Enabled = False
-		  
-		  pdf = new fpdf("P")
-		  pdf.SetEnconding(Encodings.WindowsLatin1)
-		  
-		  pdf.AddPage()
-		  
-		  // pass the absolute shell path as a string to image method
-		  Dim chartpath As String
-		  
-		  chartpath = GetFolderItem("").Child("demoinfo").Child("3.png").ShellPath
-		  pdf.Image(chartpath,10,10,150,0)
-		  
-		  pdf.Output(me.Name + ".pdf")
-		  
-		  me.Enabled = true
+		  #If UseMBS Then
+		    dim pdf as fpdf
+		    dim link as string
+		    
+		    me.Enabled = False
+		    
+		    pdf = new fpdf("P")
+		    pdf.SetEnconding(Encodings.WindowsLatin1)
+		    
+		    pdf.AddPage()
+		    
+		    // pass the absolute shell path as a string to image method
+		    Dim chartpath As String
+		    
+		    Dim fDebugFolder As FolderItem
+		    #If TargetWindows Then
+		      fDebugFolder=GetFolderItem("").Parent
+		    #Else
+		      fDebugFolder=GetFolderItem("")
+		    #Endif
+		    
+		    chartpath = fDebugFolder.Child("demoinfo").Child("3.png").ShellPath
+		    pdf.Image(chartpath,10,10,150,0)
+		    
+		    pdf.Output(me.Name + ".pdf")
+		    
+		    me.Enabled = true
+		  #Else
+		    MsgBox("This only works with the PNGWriterMBS Class")
+		  #Endif
 		End Sub
 	#tag EndEvent
 #tag EndEvents
