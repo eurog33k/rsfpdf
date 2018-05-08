@@ -25,6 +25,12 @@ TODO:
 Release 18.05.08
 + PNG Image Support
 
+There are three methods to write the PNG to the pdf.
+Example 6 has all three methods:
+Method A: embed mask and image (no dependencies)
+Method B: use alpha channel from PNG converted to 7-bit by GD (lower quality, dependency on PNGWriterMBS)
+Method C: same as B, but using image() method that recognizes alpha_channel (dependency on PNGWriterMBS) 
+
 Release 08.03.11
 + JPG Image support
 + Links Support
