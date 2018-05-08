@@ -597,7 +597,8 @@ Protected Class fpdf
 		  me.SetDisplayMode("fullwidth")
 		  
 		  //Enable compression
-		  me.SetCompression(True)
+		  'me.SetCompression(True)
+		  me.SetCompression(False)
 		  
 		  //Set default PDF version number
 		  me.PDFVersion="1.3"
@@ -730,9 +731,9 @@ Protected Class fpdf
 		  
 		  dim data as string
 		  
-		  dim marker as Integer
+		  dim marker as UInt8
 		  
-		  dim length, bits, height, width, channels as Integer
+		  dim length, bits, height, width, channels as UInt16
 		  
 		  dim r as Collection
 		  
@@ -750,13 +751,18 @@ Protected Class fpdf
 		      
 		    case &hc0,&hc1,&hc2,&hc3, &hc5,&hc6,&hc7, &hc9,&hca,&hcb, &hcd,&hce,&hcf
 		      
-		      length = f.ReadShort
+		      'length = f.ReadShort
+		      length = f.ReadUInt16
 		      
 		      r = new Collection
-		      r.Add f.readbyte, "bits"
-		      r.Add f.readshort, "height"
-		      r.Add f.readshort, "width"
-		      r.Add f.Readbyte, "channels"
+		      'r.Add f.readbyte, "bits"
+		      r.Add f.readUint8, "bits"
+		      'r.Add f.readshort, "height"
+		      r.Add f.ReadUInt16, "height"
+		      'r.Add f.readshort, "width"
+		      r.Add f.ReadUInt16, "width"
+		      'r.Add f.Readbyte, "channels"
+		      r.Add f.ReadUint8, "channels"
 		      
 		      return r
 		      
@@ -805,6 +811,38 @@ Protected Class fpdf
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function GreyScale(p As Picture) As Picture
+		  if p = nil then return nil 'raise exception...
+		  
+		  Dim w As Integer = p.Width
+		  Dim h As Integer = p.Height
+		  
+		  dim surf As RGBSurface = p.RGBSurface
+		  
+		  if surf = nil then return nil 'raise exception...
+		  
+		  dim greyColor(255) As Color //precompute the 256 grey colors
+		  for i As integer = 0 to 255
+		    greyColor(i) = RGB(i, i, i)
+		  next
+		  
+		  dim X, Y, intensity As integer, c As Color
+		  For X = 0 To w
+		    For Y = 0 To h
+		      c = surf.Pixel(X, Y)
+		      intensity = c.Red * 0.30 + c.Green * 0.59 + c.Blue * 0.11
+		      surf.Pixel(X, Y) = greyColor(intensity) //lookup grey
+		    Next
+		  Next
+		  
+		  Return p
+		  
+		  
+		  
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h1
 		Protected Function gzcompress(s as string) As string
 		  // Heres goes the gzip compression algoritm or plugin call
@@ -822,12 +860,19 @@ Protected Class fpdf
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub Image(file as string, x as double, y as double, optional w as double = 0, optional h as double = 0, optional type as string = "", optional link as string = "")
+		Sub Image(file as string, x as double, y as double, optional w as double = 0, optional h as double = 0, optional type as string = "", optional link as string = "", isMask As Boolean=False, maskImg As Integer=0)
+		  Dim iRet As Integer
+		  iret=Image(file,x,y,w,h,type,link, ismask, MaskImg)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function Image(file as string, x as double, y as double, optional w as double = 0, optional h as double = 0, optional type as string = "", optional link as string = "", isMask As Boolean=False, maskImg As Integer=0) As Integer
 		  //Put an image on the page
 		  dim info as collection
 		  dim pos as integer
 		  
-		  if( me.Images.Item(file) = nil) then
+		  if ( me.Images.Item(file) = nil) then
 		    
 		    //First use of image, get info
 		    if(type = "") then
@@ -836,7 +881,7 @@ Protected Class fpdf
 		      
 		      if(pos = 0) then
 		        me.Error("Image file has no extension and no type was specified: " + file)
-		        return
+		        return -1
 		      end if
 		      
 		      type = file.Mid(pos+1)
@@ -846,17 +891,36 @@ Protected Class fpdf
 		    type = type.Lowercase
 		    
 		    select case type
-		      
-		    case "jpg","jpeg"
-		      info = me.parsejpg(file)
 		    case "png"
 		      info = me.parsepng(file)
+		      if info<>nil and info.Item(1)="alpha" Then
+		        ImagePngWithAlpha(file,x,y,w,h,link)
+		        Return -1
+		      end if
+		    case "jpg","jpeg"
+		      info = me.parsejpg(file)
 		    case else
 		      me.Error("Unsupported image type: " + type)
-		      return
+		      return -1
 		    end select
 		    
+		    if isMask Then
+		      if tmpfiles<>nil and tmpfiles.HasKey(file) then
+		        if info.Item("cs")="" Then
+		          info.Add "DeviceGray", "cs"
+		        end if
+		      end if
+		      if info.Item("cs")<>"DeviceGray" then
+		        me.Error "Mask must be a gray scale image"
+		      end if
+		      if PDFVersion<>"1.4" then
+		        PDFVersion="1.4"
+		      end if
+		    end if
 		    info.add me.Images.Count + 1, "i"
+		    if maskImg>0 Then
+		      info.Add maskImg, "masked"
+		    end if
 		    me.Images.Add info, file
 		    
 		  else
@@ -868,7 +932,7 @@ Protected Class fpdf
 		  if(w = 0 and  h = 0) then
 		    
 		    //Put image at 72 dpi
-		    w = info.item("w") / me.k
+		    w = info.item("w") / me.k //pixeltomm
 		    h = info.item("h") / me.k
 		  end if
 		  
@@ -876,24 +940,158 @@ Protected Class fpdf
 		  
 		  if(h = 0) then h = w * info.item("h") / info.item("w")
 		  
-		  me.out("q " + fNum(w * me.k,"0.00") + " 0 0 " + fnum(h * me.k,"0.00") + " " + fnum(x * me.k,"0.00") + " " + fNum((me.h-(y+h)) * me.k,"0.00") + " cm /I" + info.item("i").StringValue + " Do Q")
-		  
+		  if isMask=False Then
+		    me.out("q " + fNum(w * me.k,"0.00") + " 0 0 " + fnum(h * me.k,"0.00") + " " + fnum(x * me.k,"0.00") + " " + fNum((me.h-(y+h)) * me.k,"0.00") + " cm /I" + info.item("i").StringValue + " Do Q")
+		  end if
 		  if(link <> "") then me.Link(x,y,w,h,link)
+		  
+		  Return info.Item("i")
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub ImagePngWithAlpha(file as string, x as double, y as double, optional w as double = 0, optional h as double = 0, optional type as string = "", optional link as string = "")
+		  Dim tmp_alpha As FolderItem
+		  Dim tmp_alpha2 As FolderItem
+		  Dim tmp_plain As FolderItem
+		  Dim strKey As String
+		  '$tmp_alpha = tempnam('.', 'mska');
+		  Dim iCountFiles As Integer
+		  if tmpfiles=nil then
+		    tmpfiles=New Dictionary
+		  end if
+		  iCountFiles=tmpfiles.Count
+		  strKey="mska" + Format(iCountFiles,"0000") + ".png"
+		  tmp_alpha=GetFolderItem(strKey)
+		  if tmp_alpha=nil then
+		    exit sub
+		  end if
+		  strKey="mska" + Format(iCountFiles,"0000") + "b.png"
+		  tmp_alpha2=GetFolderItem(strKey)
+		  if tmp_alpha2=nil then
+		    exit sub
+		  end if
+		  tmpfiles.value(tmp_alpha.ShellPath)=iCountFiles
+		  'tmpfiles.Append tmp_alpha.Name
+		  '$this->tmpFiles[] = $tmp_alpha;
+		  '$tmp_plain = tempnam('.', 'mskp');
+		  iCountFiles=tmpfiles.Count
+		  strKey="mskp" + Format(iCountFiles,"0000") + ".png"
+		  tmp_plain=GetFolderItem(strKey)
+		  if tmp_plain= nil then
+		    Exit Sub
+		  end if
+		  tmpfiles.value(tmp_plain.ShellPath)=iCountFiles
+		  'tmpfiles.Append tmp_plain.Name
+		  '$this->tmpFiles[] = $tmp_plain;
+		  
+		  'list($wpx, $hpx) = getimagesize($file);
+		  'Dim a As Collection
+		  'Dim wpx As Integer
+		  'Dim hpx As Integer
+		  'a=GetImageSize(file)
+		  'wpx=a.Item("width")
+		  'hpx=a.Item("height")
+		  
+		  '$img = imagecreatefrompng($file);
+		  Dim img As Picture
+		  Dim imgFile As FolderItem
+		  imgFile=GetFolderItem(file,FolderItem.PathTypeShell)
+		  if imgFile=nil then
+		    me.Error("Unexpected error opening alpha png") 
+		    exit sub
+		  end if
+		  img=Picture.Open(imgFile)
+		  '$alpha_img = imagecreate( $wpx, $hpx );
+		  
+		  // generate gray scale pallete
+		  'for($c=0;$c<256;$c++)
+		  'ImageColorAllocate($alpha_img, $c, $c, $c);
+		  '
+		  '// extract alpha channel
+		  '$xpx=0;
+		  'while ($xpx<$wpx){
+		  '$ypx = 0;
+		  'while ($ypx<$hpx){
+		  '$color_index = imagecolorat($img, $xpx, $ypx);
+		  '$col = imagecolorsforindex($img, $color_index);
+		  'imagesetpixel($alpha_img, $xpx, $ypx, $this->_gamma( (127-$col['alpha'])*255/127) );
+		  '++$ypx;
+		  '}
+		  '++$xpx;
+		  '}
+		  Dim alpha_img As Picture
+		  alpha_img=img.CopyMask
+		  alpha_img=InvertPicture(alpha_img)
+		  'alpha_img=GreyScale(alpha_img)
+		  'imagepng($alpha_img, $tmp_alpha);
+		  'alpha_img.Save(tmp_alpha, Picture.SaveAsPNG)
+		  dim p As new PNGWriterMBS
+		  if p.OpenWriteDestination(tmp_alpha) then
+		    if p.SetGrayPicture(alpha_img) then // set picture to write
+		      if p.SetHeader(false, -1) then // setup file header
+		        if p.SetGamma(0) then // and default gamma
+		          if p.WriteInfo then // write file header
+		            if p.WriteRows then // write pixels
+		              if p.WriteEnd then // and write file end
+		                p = nil // cleanup
+		                'f.Launch
+		              end if
+		            end if
+		          end if
+		        end if
+		      end if
+		    end if
+		  end if
+		  'imagedestroy($alpha_img);
+		  alpha_img=nil
+		  
+		  // extract image without alpha channel
+		  '$plain_img = imagecreatetruecolor ( $wpx, $hpx );
+		  Dim plain_img As New Picture(img.Width, img.Height,32)
+		  'imagecopy($plain_img, $img, 0, 0, 0, 0, $wpx, $hpx );
+		  plain_img.Graphics.DrawPicture(img,0,0)
+		  'imagepng($plain_img, $tmp_plain);
+		  plain_img.Save(tmp_plain, Picture.SaveAsPNG)
+		  'imagedestroy($plain_img);
+		  plain_img=nil
+		  
+		  //first embed mask image (w, h, x, will be ignored)
+		  '$maskImg = $this->Image($tmp_alpha, 0,0,0,0, 'PNG', '', true); 
+		  Image(tmp_alpha.ShellPath, 0, 0, 0, 0, "PNG", "", True)
+		  //embed image, masked with previously embedded mask
+		  '$this->Image($tmp_plain,$x,$y,$w,$h,'PNG',$link, false, $maskImg);
+		  Image(tmp_plain.ShellPath, x, y, w, h, "PNG", link, False, me.Images.Count)
 		  
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function InvertPicture(p As Picture) As Picture
+		  Const kMaxMapOffset = 255
+		  Dim map(kMaxMapOffset) As Integer
+		  For i As Integer = 0 To kMaxMapOffset
+		    map(i) = kMaxMapOffset - i
+		  Next
+		  p.RGBSurface.Transform(map)
+		  Return p
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
-		Private Function jpegnextmarker(f as binaryStream) As integer
-		  dim c as integer
+		Private Function jpegnextmarker(f as binaryStream) As UInt8
+		  dim c as UInt8
 		  
 		  while true
 		    
 		    // look for 0xff
-		    while (f.readbyte <> 255)
+		    'while (f.readbyte <> 255)
+		    while (f.ReadUint8 <> 255)
 		    wend
 		    
-		    c = f.readbyte
+		    'c = f.readbyte
+		    c = f.ReadUInt8
 		    
 		    if c <> 0 then return c
 		    
@@ -1277,14 +1475,20 @@ Protected Class fpdf
 		  dim r as new Collection
 		  Dim f As FolderItem
 		  Dim t as BinaryStream
+		  Dim strRead As String
+		  Dim strCompare As String
 		  
 		  dim nulo as string
 		  
 		  f = GetFolderItem(file,  FolderItem.PathTypeShell)
 		  t = f.OpenAsBinaryFile
 		  
+		  strRead=t.Read(8)
+		  strCompare=chrb(137) + "PNG" + chr(13) + chr(10) + chr(26) + chr(10)
+		  
 		  //Check signature
-		  if( t.Read(8) <> chr(137) + "PNG" + chr(13) + chr(10) + chr(26) + chr(10)) then
+		  'if( t.Read(8) <> chr(137) + "PNG" + chr(13) + chr(10) + chr(26) + chr(10)) then
+		  if strRead <> strCompare then
 		    me.Error("Not a PNG file: " + file)
 		    return r
 		  end if
@@ -1318,7 +1522,8 @@ Protected Class fpdf
 		  case 3
 		    colspace="Indexed"
 		  case else
-		    me.Error("Alpha channel not supported: " + file)
+		    'me.Error("Alpha channel not supported: " + file)
+		    r.Add "alpha"
 		    return r
 		    
 		  end select
@@ -1608,6 +1813,10 @@ Protected Class fpdf
 		    me.out("/Width " + str(info.item("w").Int32Value) )
 		    me.out("/Height " + str(info.item("h").int32value) )
 		    
+		    if (info.Item("masked")<>"") then
+		      me.out("/SMask " + Cstr(me.n-1) + " 0 R")
+		    end if
+		    
 		    if(info.item("cs") = "Indexed") then
 		      
 		      me.out("/ColorSpace [/Indexed /DeviceRGB" + " " + str( info.item("pal").StringValue.len / 3 - 1 ) + " " + str( me.n + 1 ) + " 0 R]")
@@ -1740,47 +1949,47 @@ Protected Class fpdf
 		      
 		      //Links
 		      
-		      annots = "/Annots ["
-		      
 		      pl = Collection(me.PageLinks.Lookup(n,nil))
-		      
-		      'for i as integer = 0 to cLinks.Count
-		      
-		      'pl = cLinks.item(i)
-		      
-		      rect = fNum( pl.item("x"), "0.00") + " " + _
-		      fNum( pl.item("y"), "0.00") + " " + _
-		      fNum( pl.item("x") + pl.item("w"), "0.00") + " " + _
-		      fNum( pl.item("y") - pl.item("h"), "0.00")
-		      
-		      annots = annots + "<</Type /Annot /Subtype /Link /Rect [" + rect + "] /Border [0 0 0] "
-		      
-		      if(not pl.item("link").IsArray ) then
+		      if pl<>nil then
+		        annots = "/Annots ["
 		        
-		        annots = annots + "/A <</S /URI /URI " + me.textstring(pl.item("link").StringValue) + ">>>>"
+		        'for i as integer = 0 to cLinks.Count
 		        
-		      else
+		        'pl = cLinks.item(i)
 		        
-		        lnk = Collection( me.links.Item( pl.item("link").StringValue ) )
+		        rect = fNum( pl.item("x"), "0.00") + " " + _
+		        fNum( pl.item("y"), "0.00") + " " + _
+		        fNum( pl.item("x") + pl.item("w"), "0.00") + " " + _
+		        fNum( pl.item("y") - pl.item("h"), "0.00")
 		        
-		        if me.OrientationChanges.Item( lnk.Item("page").StringValue ) then
-		          h = wPt
+		        annots = annots + "<</Type /Annot /Subtype /Link /Rect [" + rect + "] /Border [0 0 0] "
+		        
+		        if(not pl.item("link").IsArray ) then
+		          
+		          annots = annots + "/A <</S /URI /URI " + me.textstring(pl.item("link").StringValue) + ">>>>"
+		          
 		        else
-		          h = hPt
+		          
+		          lnk = Collection( me.links.Item( pl.item("link").StringValue ) )
+		          
+		          if me.OrientationChanges.Item( lnk.Item("page").StringValue ) then
+		            h = wPt
+		          else
+		            h = hPt
+		          end if
+		          
+		          annots = annots + "/Dest [" + _
+		          str(1 + 2 * lnk.item("page").IntegerValue ) + _
+		          " 0 R /XYZ 0 " + _
+		          fNum(h - lnk.item("y").DoubleValue * me.k,"0.00") + _
+		          " null]>>"
+		          
 		        end if
 		        
-		        annots = annots + "/Dest [" + _
-		        str(1 + 2 * lnk.item("page").IntegerValue ) + _
-		        " 0 R /XYZ 0 " + _
-		        fNum(h - lnk.item("y").DoubleValue * me.k,"0.00") + _
-		        " null]>>"
+		        'next
 		        
+		        me.out(annots + "]")
 		      end if
-		      
-		      'next
-		      
-		      me.out(annots + "]")
-		      
 		    end if
 		    
 		    me.out("/Contents " + str(me.n + 1) + " 0 R>>")
@@ -2317,6 +2526,16 @@ Protected Class fpdf
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function str_Repeat(strString As String, iAmount As Integer) As String
+		  Dim strRet As String
+		  For i As Integer=1 to iAmount
+		    strRet=strRet + strString
+		  Next 
+		  Return strRet
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h1
 		Protected Function substr_count(cadena as string, caracter as string) As integer
 		  dim i as double
@@ -2845,6 +3064,10 @@ Protected Class fpdf
 		Protected tMargin As double
 	#tag EndProperty
 
+	#tag Property, Flags = &h0
+		tmpfiles As Dictionary
+	#tag EndProperty
+
 	#tag Property, Flags = &h1
 		Protected Underline As Boolean = False
 	#tag EndProperty
@@ -2938,33 +3161,33 @@ Protected Class fpdf
 			Visible=true
 			Group="ID"
 			InitialValue="-2147483648"
-			InheritedFrom="Object"
+			Type="Integer"
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="Left"
 			Visible=true
 			Group="Position"
 			InitialValue="0"
-			InheritedFrom="Object"
+			Type="Integer"
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="Name"
 			Visible=true
 			Group="ID"
-			InheritedFrom="Object"
+			Type="String"
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="Super"
 			Visible=true
 			Group="ID"
-			InheritedFrom="Object"
+			Type="String"
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="Top"
 			Visible=true
 			Group="Position"
 			InitialValue="0"
-			InheritedFrom="Object"
+			Type="Integer"
 		#tag EndViewProperty
 	#tag EndViewBehavior
 End Class

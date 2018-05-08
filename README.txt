@@ -22,6 +22,9 @@ TODO:
    - True Type embedding and complete support
    - Improbe Links support
 
+Release 18.05.08
++ PNG Image Support
+
 Release 08.03.11
 + JPG Image support
 + Links Support
@@ -53,3 +56,4 @@ Thanks to people who contribute to the project:
 * Dan Harding
 * Gilberto De Faveri (http://www.omnidea.it/)
 * Roberto Tremonti 
+* Dirk Cleenwerck (PNG Support)

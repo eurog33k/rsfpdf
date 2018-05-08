@@ -5,6 +5,7 @@ Begin Menu MenuBar1
       Text = "&File"
       Index = -2147483648
       AutoEnable = True
+      Visible = True
       Begin QuitMenuItem FileQuit
          SpecialMenu = 0
          Text = "#App.kFileQuit"
@@ -12,6 +13,7 @@ Begin Menu MenuBar1
          ShortcutKey = "#App.kFileQuitShortcut"
          Shortcut = "#App.kFileQuitShortcut"
          AutoEnable = True
+         Visible = True
       End
    End
    Begin MenuItem EditMenu
@@ -19,6 +21,7 @@ Begin Menu MenuBar1
       Text = "&Edit"
       Index = -2147483648
       AutoEnable = True
+      Visible = True
       Begin MenuItem EditUndo
          SpecialMenu = 0
          Text = "&Undo"
@@ -27,12 +30,14 @@ Begin Menu MenuBar1
          Shortcut = "Cmd+Z"
          MenuModifier = True
          AutoEnable = True
+         Visible = True
       End
       Begin MenuItem UntitledMenu1
          SpecialMenu = 0
          Text = "-"
          Index = -2147483648
          AutoEnable = True
+         Visible = True
       End
       Begin MenuItem EditCut
          SpecialMenu = 0
@@ -42,6 +47,7 @@ Begin Menu MenuBar1
          Shortcut = "Cmd+X"
          MenuModifier = True
          AutoEnable = True
+         Visible = True
       End
       Begin MenuItem EditCopy
          SpecialMenu = 0
@@ -51,6 +57,7 @@ Begin Menu MenuBar1
          Shortcut = "Cmd+C"
          MenuModifier = True
          AutoEnable = True
+         Visible = True
       End
       Begin MenuItem EditPaste
          SpecialMenu = 0
@@ -60,18 +67,21 @@ Begin Menu MenuBar1
          Shortcut = "Cmd+V"
          MenuModifier = True
          AutoEnable = True
+         Visible = True
       End
       Begin MenuItem EditClear
          SpecialMenu = 0
          Text = "#App.kEditClear"
          Index = -2147483648
          AutoEnable = True
+         Visible = True
       End
       Begin MenuItem UntitledMenu0
          SpecialMenu = 0
          Text = "-"
          Index = -2147483648
          AutoEnable = True
+         Visible = True
       End
       Begin MenuItem EditSelectAll
          SpecialMenu = 0
@@ -81,6 +91,7 @@ Begin Menu MenuBar1
          Shortcut = "Cmd+A"
          MenuModifier = True
          AutoEnable = True
+         Visible = True
       End
    End
 End
